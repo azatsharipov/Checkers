@@ -97,12 +97,29 @@ isMy _ _ [] = False
 isMy x y (z : zs) = x == fst z && y == snd z || isMy x y zs
 
 checkGoal :: MyProj.Point -> MyProj.Point -> CheckersGame -> Bool
-checkGoal to from game = abs (xTo - xFrom) == 80 && (yTo - yFrom) == 80 && (not (isEnemy xTo yTo (enemyCheckers game)))
-                                                 && (not (isMy xTo yTo (myCheckers game)))
-                                           || abs (xTo - xFrom) == 160 && (yTo - yFrom) == 160
-                                                 && isEnemy ((xTo + xFrom) / 2) ((yTo + yFrom) / 2) (enemyCheckers game)
-                                                 && (not (isMy xTo yTo (myCheckers game)))
-                                                 && (not (isEnemy xTo yTo (enemyCheckers game)))
+checkGoal to from game | (turn game) == True = abs (xTo - xFrom) == 80
+                                            && (yTo - yFrom) == 80
+                                            && (not (isEnemy xTo yTo (enemyCheckers game)))
+                                            && (not (isMy xTo yTo (myCheckers game)))
+                                            || abs (xTo - xFrom) == 160
+                                            && (yTo - yFrom) == 160
+                                            && isEnemy ((xTo + xFrom) / 2) ((yTo + yFrom) / 2) (enemyCheckers game)
+                                            && (not (isMy xTo yTo (myCheckers game)))
+                                            && (not (isEnemy xTo yTo (enemyCheckers game)))
+  where
+    xTo = fromIntegral ((toInt (fst to)) `div` 80 * 80 + 40)
+    yTo = fromIntegral ((toInt (snd to)) `div` 80 * 80 + 40)
+    xFrom = fst from
+    yFrom = snd from
+checkGoal to from game | otherwise = abs (xTo - xFrom) == 80
+                                  && (yTo - yFrom) == -80
+                                  && (not (isEnemy xTo yTo (enemyCheckers game)))
+                                  && (not (isMy xTo yTo (myCheckers game)))
+                                  || abs (xTo - xFrom) == 160
+                                  && (yTo - yFrom) == -160
+                                  && isMy ((xTo + xFrom) / 2) ((yTo + yFrom) / 2) (myCheckers game)
+                                  && (not (isMy xTo yTo (myCheckers game)))
+                                  && (not (isEnemy xTo yTo (enemyCheckers game)))
   where
     xTo = fromIntegral ((toInt (fst to)) `div` 80 * 80 + 40)
     yTo = fromIntegral ((toInt (snd to)) `div` 80 * 80 + 40)
@@ -122,15 +139,26 @@ dividePoints x y = ((fst x) / y, (snd x) / y)
 
 keys :: Event -> CheckersGame -> CheckersGame
 keys (EventKey (MouseButton LeftButton) Down _ _) game
-  | (isActive game) == True = if checkGoal (mousePosition game) (active game) game
+--1 player move
+  | (isActive game) == True = if (checkGoal (mousePosition game) (active game) game) && (turn game)
     then game
       { myCheckers = deleteOld (active game) (myCheckers game) ++ [normalized (mousePosition game)]
       , enemyCheckers = deleteOld (dividePoints (sumPoints (active game) (normalized (mousePosition game))) 2) (enemyCheckers game)
       , isActive = False
-      , turn = (not true)
+      , turn = (not (turn game))
       }
-    else game {isActive = False}
-  | otherwise = tryActive (mousePosition game) game (myCheckers game)
+--2 player move
+  else if checkGoal (mousePosition game) (active game) game
+    then game
+      { myCheckers = deleteOld (dividePoints (sumPoints (active game) (normalized (mousePosition game))) 2) (myCheckers game)
+      , enemyCheckers = deleteOld (active game) (enemyCheckers game) ++ [normalized (mousePosition game)]
+      , isActive = False
+      , turn = (not (turn game))
+      }
+  else game {isActive = False}
+  | otherwise = if (turn game)
+    then tryActive (mousePosition game) game (myCheckers game)
+    else tryActive (mousePosition game) game (enemyCheckers game)
 keys (EventMotion x) game = game {mousePosition = x}
 keys _ game = game
 
