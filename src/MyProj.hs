@@ -103,20 +103,22 @@ isIn (x, y) = x >= -280
            && y >= -280
            && y <= 280
 
-checkGoalFrom :: [MyProj.Point] -> MyProj.Point -> CheckersGame -> Bool -> Bool
-checkGoalFrom [] _ _ _ = False
-checkGoalFrom (to : xs) from game z | z = abs (xTo - xFrom) == 80
-                                           && (yTo - yFrom) == 80
-                                           && (not (isEnemy (sumPoints to (subPoints to from)) (enemyCheckers game)))
-                                           && (not (isMy (sumPoints to (subPoints to from)) (myCheckers game)))
-                                           && (isIn (sumPoints to (subPoints to from)))
-                                           || (checkGoalFrom xs from game z)
-                                        | otherwise = abs (xTo - xFrom) == 80
-                                           && (yTo - yFrom) == -80
-                                           && (not (isEnemy (sumPoints to (subPoints to from)) (enemyCheckers game)))
-                                           && (not (isMy (sumPoints to (subPoints to from)) (myCheckers game)))
-                                           && (isIn (sumPoints to (subPoints to from)))
-                                           || (checkGoalFrom xs from game z)
+checkGoalFrom :: [MyProj.Point] -> MyProj.Point -> CheckersGame -> Bool -> MyProj.Point -> Bool
+checkGoalFrom [] _ _ _ _ = False
+checkGoalFrom (to : xs) from game z active | z = abs (xTo - xFrom) == 80
+                                              && (yTo - yFrom) == 80
+                                              && (not (isEnemy (sumPoints to (subPoints to from)) (enemyCheckers game)))
+                                              && (not (isMy (sumPoints to (subPoints to from)) (myCheckers game)))
+                                              && (isIn (sumPoints to (subPoints to from)))
+                                              && ((absPoint (subPoints active from)) == (160, 160))
+                                              || (checkGoalFrom xs from game z active)
+                                           | otherwise = abs (xTo - xFrom) == 80
+                                              && (yTo - yFrom) == -80
+                                              && (not (isEnemy (sumPoints to (subPoints to from)) (enemyCheckers game)))
+                                              && (not (isMy (sumPoints to (subPoints to from)) (myCheckers game)))
+                                              && (isIn (sumPoints to (subPoints to from)))
+                                              && ((absPoint (subPoints active from)) == (160, 160))
+                                              || (checkGoalFrom xs from game z active)
   where
     xTo = fromIntegral ((toInt (fst to)) `div` 80 * 80 + 40)
     yTo = fromIntegral ((toInt (snd to)) `div` 80 * 80 + 40)
@@ -185,6 +187,9 @@ deleteOld _ [] = []
 deleteOld y (x : xs) | x == y = xs
                      | otherwise = x : deleteOld y xs
 
+absPoint :: MyProj.Point -> MyProj.Point
+absPoint x = (abs (fst x), abs (snd x))
+
 sumPoints :: MyProj.Point -> MyProj.Point -> MyProj.Point
 sumPoints x y = ((fst x) + (fst y), (snd x) + (snd y))
 
@@ -205,18 +210,18 @@ keys (EventKey (MouseButton LeftButton) Down _ _) game
     then game
       { myCheckers = deleteOld (active game) (myCheckers game) ++ [normalized (mousePosition game)]
       , enemyCheckers = deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (enemyCheckers game)
+      , isActive = checkGoalFrom (enemyCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
       , active = normalized (mousePosition game)
-      , isActive = False
-      , turn = (not (turn game))
+      , turn = checkGoalFrom (enemyCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
       }
 --2 player move
   else if checkGoal (mousePosition game) (active game) game
     then game
       { myCheckers = deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (myCheckers game)
       , enemyCheckers = deleteOld (active game) (enemyCheckers game) ++ [normalized (mousePosition game)]
+      , isActive = checkGoalFrom (myCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
       , active = normalized (mousePosition game)
-      , isActive = False
-      , turn = (not (turn game))
+      , turn = not (checkGoalFrom (myCheckers game) (normalized (mousePosition game)) game (turn game) (active game))
       }
   else game {isActive = False}
   | otherwise = if (turn game)
