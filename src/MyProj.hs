@@ -62,7 +62,9 @@ blackCells x y | x <= 280 && y <= 280 = [translate x y $ color (makeColor 0.5 0.
 
 gameToPicture :: [MyProj.Checker] -> Color -> [Picture]
 gameToPicture [] _ = []
-gameToPicture (x : xs) c = [translate (fst (fst x)) (snd (fst x)) $ (color c) $ circleSolid 40] ++ (gameToPicture xs c)
+gameToPicture (x : xs) c | not (snd x) = [translate (fst (fst x)) (snd (fst x)) $ (color c) $ circleSolid 40] ++ (gameToPicture xs c)
+                         | otherwise = [translate (fst (fst x)) (snd (fst x)) $ (color c) $ circleSolid 40]
+                                    ++ [translate (fst (fst x)) (snd (fst x)) $ (color yellow) $ circleSolid 20] ++ (gameToPicture xs c)
 
 drawing :: CheckersGame -> Picture
 drawing game | (isActive game) = pictures ((blackCells (-280) (-280))
@@ -273,7 +275,7 @@ keys (EventKey (MouseButton LeftButton) Down _ _) game
   | (isActive game) == True = if (checkGoal (mousePosition game) (active game) game) && (turn game)
     then game
       { myCheckers = setKing (deleteOld (active game) (myCheckers game) ++ [(normalized (mousePosition game), isKing game)]) (turn game)
-      , enemyCheckers = setKing (deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (enemyCheckers game)) (turn game)
+      , enemyCheckers = deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (enemyCheckers game)
       , isActive = checkGoalFrom (enemyCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
       , active = normalized (mousePosition game)
       , turn = checkGoalFrom (enemyCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
@@ -281,7 +283,7 @@ keys (EventKey (MouseButton LeftButton) Down _ _) game
 --2 player move
   else if checkGoal (mousePosition game) (active game) game
     then game
-      { myCheckers = setKing (deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (myCheckers game)) (turn game)
+      { myCheckers = deleteOld (divPoints (sumPoints (active game) (normalized (mousePosition game))) 2) (myCheckers game)
       , enemyCheckers = setKing (deleteOld (active game) (enemyCheckers game) ++ [(normalized (mousePosition game), isKing game)]) (turn game)
       , isActive = checkGoalFrom (myCheckers game) (normalized (mousePosition game)) game (turn game) (active game)
       , active = normalized (mousePosition game)
